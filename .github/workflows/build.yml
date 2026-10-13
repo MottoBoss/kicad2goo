@@ -1,0 +1,57 @@
+# Builds KiCad2GOO for Windows and macOS (Apple Silicon + Intel) on GitHub's runners.
+# Every push: convert samples/*.svg on each OS and check the result matches samples/*.goo, then build the app
+#             (downloadable from the run's "Artifacts").
+# Tag push (git tag v1.2.3 && git push origin v1.2.3): also publishes the three apps on the Releases page.
+name: build
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-latest, asset: KiCad2GOO-windows.exe}
+          - {os: macos-15, asset: KiCad2GOO-macos-apple-silicon.zip}
+          - {os: macos-15-intel, asset: KiCad2GOO-macos-intel.zip}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run: {shell: bash}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.txt pyinstaller==6.22.3
+      - name: Converter reproduces samples/*.goo on this OS
+        run: |
+          python pcb2goo.py --front samples/Dark_Sensor-F_Cu.svg --back samples/Dark_Sensor-B_Cu.svg --out .
+          python - <<'EOF'
+          import numpy as np, pcb2goo as g
+          for n in ('Dark_Sensor-F_Cu', 'Dark_Sensor-B_Cu'):
+              new, ref = (g.read_goo(p)[1][0][1].astype(int) for p in (f'{n}.goo', f'samples/{n}.goo'))
+              d = np.abs(new - ref)
+              print(n, 'pixel-identical' if not d.any() else f'max diff {d.max()}, {np.mean(d <= 16):.4%} within 16/255')
+              assert new.any() and np.mean(d <= 16) > 0.999
+          EOF
+      - run: pyinstaller --noconfirm --onefile --windowed --name KiCad2GOO app.py
+      - name: Package
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            (cd dist && ditto -c -k --keepParent KiCad2GOO.app "../${{ matrix.asset }}")  # zip keeps the .app intact
+          else
+            cp dist/KiCad2GOO.exe "${{ matrix.asset }}"
+          fi
+      - uses: actions/upload-artifact@v4
+        with: {name: '${{ matrix.asset }}', path: '${{ matrix.asset }}'}
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions: {contents: write}
+    steps:
+      - uses: actions/download-artifact@v4
+        with: {merge-multiple: true}
+      - run: gh release create "$GITHUB_REF_NAME" KiCad2GOO-* --repo "$GITHUB_REPOSITORY" --title "KiCad2GOO $GITHUB_REF_NAME" --generate-notes
+        env: {GH_TOKEN: '${{ github.token }}'}
