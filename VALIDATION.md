@@ -19,6 +19,7 @@ Re-run everything with `python validate.py`. The full output of the final run is
 | D | File validity | Structure, checksum, 8520×4320, 1 layer, 10/3 s; **UVtools 7.0.0 opens both files and decodes identical images** |
 | E | 6 KiCad demo boards (both sides) + 3 synthetic boards | All 7 fitting SVGs convert, land in the corner and match Inkscape (99.95–99.996% within 16/255, size ±1 px); all 8 oversize SVGs rejected with a clear message |
 | GUI | Packaged `KiCad2GOO.exe` driven on the desktop | Converts both sides; output identical to the command line except the timestamp |
+| Cross-platform | GitHub Actions: Windows, macOS Apple Silicon, macOS Intel | Converter output pixel-identical on all three; all three apps build |
 | Printer | Physical print on a Mars 4 Ultra | **Not tested** |
 
 ## 1. What the reference files revealed
@@ -171,8 +172,10 @@ rejected before converting.
 ## 7. Known limitations and untested items
 
 * **No physical print was made.** Compatibility is shown against your working files and UVtools 7.0.0 only.
-* **macOS is untested** (no Mac available). The code is cross-platform, and every dependency ships wheels for Apple
-  Silicon and Intel. `.github/workflows/build.yml` should build both `.app`s on GitHub, but that workflow has not run.
+* **macOS: conversion verified, app window not tried.** On GitHub Actions (run 38436743161), the converter's output
+  on Apple Silicon (`macos-15`) and Intel (`macos-15-intel`) runners was **pixel-identical** to the Windows-made
+  `samples/*.goo`, and both `.app` bundles built. No one has opened the `.app` on a real Mac yet: the window,
+  file dialogs and Gatekeeper prompt are untested there.
 * **KiCad settings are assumed.** Orientation was matched to SVGs plotted with *Mirrored plot* on (KiCad mirrors the
   coordinates themselves, so this cannot be detected from the SVG). With it off, both outputs would be mirrored.
   *Negative plot* is required (enforced). *Black and white* is assumed (colour themes would give partial exposure).
