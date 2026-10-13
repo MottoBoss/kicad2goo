@@ -34,9 +34,6 @@ download the file for your computer.
    xattr -dr com.apple.quarantine /Applications/KiCad2GOO.app
    ```
 
-> Can't see the Releases page? The repository is private, so the owner must add you as a collaborator
-> (Settings → Collaborators) or make the repository public.
-
 ### Step 2: Export the copper layers from KiCad
 
 1. Open your board in the **PCB Editor**.
